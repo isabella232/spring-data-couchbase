@@ -20,10 +20,13 @@ import java.util.Collection;
 
 import org.springframework.data.couchbase.core.support.OneAndAllEntity;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithScope;
+import org.springframework.data.couchbase.core.support.WithUpsertOptions;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
 import com.couchbase.client.java.kv.ReplicateTo;
+import com.couchbase.client.java.kv.UpsertOptions;
 
 public interface ExecutableUpsertByIdOperation {
 
@@ -39,22 +42,28 @@ public interface ExecutableUpsertByIdOperation {
 
 	}
 
-	interface UpsertByIdWithCollection<T> extends TerminatingUpsertById<T>, WithCollection<T> {
-
-		TerminatingUpsertById<T> inCollection(String collection);
+	interface UpsertByIdWithOptions<T> extends TerminatingUpsertById<T>, WithUpsertOptions<T> {
+		TerminatingUpsertById<T> withOptions(UpsertOptions options);
 	}
 
-	interface UpsertByIdWithDurability<T> extends UpsertByIdWithCollection<T>, WithDurability<T> {
+	interface UpsertByIdWithCollection<T> extends UpsertByIdWithOptions<T>, WithCollection<T> {
+		UpsertByIdWithOptions<T> inCollection(String collection);
+	}
 
-		UpsertByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
+	interface UpsertByIdWithScope<T> extends UpsertByIdWithCollection<T>, WithScope<T> {
+		UpsertByIdWithCollection<T> inScope(String scope);
+	}
 
-		UpsertByIdWithCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface UpsertByIdWithDurability<T> extends UpsertByIdWithScope<T>, WithDurability<T> {
+
+		UpsertByIdWithScope<T> withDurability(DurabilityLevel durabilityLevel);
+
+		UpsertByIdWithScope<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 
 	interface UpsertByIdWithExpiry<T> extends UpsertByIdWithDurability<T>, WithExpiry<T> {
 
-		@Override
 		UpsertByIdWithDurability<T> withExpiry(Duration expiry);
 	}
 

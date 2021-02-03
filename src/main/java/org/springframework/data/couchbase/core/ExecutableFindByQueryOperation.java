@@ -26,10 +26,12 @@ import org.springframework.data.couchbase.core.support.OneAndAll;
 import org.springframework.data.couchbase.core.support.WithCollection;
 import org.springframework.data.couchbase.core.support.WithConsistency;
 import org.springframework.data.couchbase.core.support.WithDistinct;
-import org.springframework.data.couchbase.core.support.WithProjection;
 import org.springframework.data.couchbase.core.support.WithQuery;
+import org.springframework.data.couchbase.core.support.WithQueryOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 import org.springframework.lang.Nullable;
 
+import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
 public interface ExecutableFindByQueryOperation {
@@ -137,19 +139,20 @@ public interface ExecutableFindByQueryOperation {
 
 	}
 
-	interface FindByQueryInCollection<T> extends FindByQueryWithQuery<T>, WithCollection<T> {
+	interface FindByQueryWithOptions<T> extends FindByQueryWithQuery<T>, WithQueryOptions<T> {
+		TerminatingFindByQuery<T> withOptions(QueryOptions options);
+	}
 
-		/**
-		 * Allows to override the default scan consistency.
-		 *
-		 * @param collection the collection to use for this query.
-		 */
-		FindByQueryWithQuery<T> inCollection(String collection);
+	interface FindByQueryInCollection<T> extends FindByQueryWithOptions<T>, WithCollection<T> {
+		FindByQueryWithOptions<T> inCollection(String collection);
+	}
 
+	interface FindByQueryWithScope<T> extends FindByQueryInCollection<T>, WithScope<T> {
+		FindByQueryInCollection<T> inScope(String scope);
 	}
 
 	@Deprecated
-	interface FindByQueryConsistentWith<T> extends FindByQueryInCollection<T> {
+	interface FindByQueryConsistentWith<T> extends FindByQueryWithScope<T> {
 
 		/**
 		 * Allows to override the default scan consistency.
@@ -157,7 +160,7 @@ public interface ExecutableFindByQueryOperation {
 		 * @param scanConsistency the custom scan consistency to use for this query.
 		 */
 		@Deprecated
-		FindByQueryInCollection<T> consistentWith(QueryScanConsistency scanConsistency);
+		FindByQueryWithScope<T> consistentWith(QueryScanConsistency scanConsistency);
 
 	}
 

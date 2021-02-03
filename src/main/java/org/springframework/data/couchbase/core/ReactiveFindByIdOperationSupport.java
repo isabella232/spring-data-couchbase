@@ -40,21 +40,25 @@ public class ReactiveFindByIdOperationSupport implements ReactiveFindByIdOperati
 
 	@Override
 	public <T> ReactiveFindById<T> findById(Class<T> domainType) {
-		return new ReactiveFindByIdSupport<>(template, domainType, null, null);
+		return new ReactiveFindByIdSupport<>(template, domainType, null, null, null, null);
 	}
 
 	static class ReactiveFindByIdSupport<T> implements ReactiveFindById<T> {
 
 		private final ReactiveCouchbaseTemplate template;
 		private final Class<T> domainType;
+		private final String scope;
 		private final String collection;
+		private final GetOptions options;
 		private final List<String> fields;
 
-		ReactiveFindByIdSupport(ReactiveCouchbaseTemplate template, Class<T> domainType, String collection,
-				List<String> fields) {
+		ReactiveFindByIdSupport(ReactiveCouchbaseTemplate template, Class<T> domainType, String scope, String collection,
+				GetOptions options, List<String> fields) {
 			this.template = template;
 			this.domainType = domainType;
+			this.scope = scope;
 			this.collection = collection;
+			this.options = options;
 			this.fields = fields;
 		}
 
@@ -65,6 +69,7 @@ public class ReactiveFindByIdOperationSupport implements ReactiveFindByIdOperati
 				if (fields != null && !fields.isEmpty()) {
 					options.project(fields);
 				}
+
 				return template.getCollection(collection).reactive().get(docId, options);
 			}).map(result -> template.support().decodeEntity(id, result.contentAs(String.class), result.cas(), domainType))
 					.onErrorResume(throwable -> {
@@ -89,15 +94,24 @@ public class ReactiveFindByIdOperationSupport implements ReactiveFindByIdOperati
 		}
 
 		@Override
-		public TerminatingFindById<T> inCollection(final String collection) {
-			Assert.hasText(collection, "Collection must not be null nor empty.");
-			return new ReactiveFindByIdSupport<>(template, domainType, collection, fields);
+		public TerminatingFindById<T> withOptions(GetOptions options) {
+			return new ReactiveFindByIdSupport<>(template, domainType, scope, collection, options, fields);
 		}
 
 		@Override
-		public FindByIdWithCollection<T> project(String... fields) {
+		public FindByIdWithOptions<T> inCollection(final String collection) {
+			return new ReactiveFindByIdSupport<>(template, domainType, scope, collection, options, fields);
+		}
+
+		@Override
+		public FindByIdWithCollection<T> inScope(String scope) {
+			return new ReactiveFindByIdSupport<>(template, domainType, scope, collection, options, fields);
+		}
+
+		@Override
+		public FindByIdWithScope<T> project(String... fields) {
 			Assert.notEmpty(fields, "Fields must not be null nor empty.");
-			return new ReactiveFindByIdSupport<>(template, domainType, collection, Arrays.asList(fields));
+			return new ReactiveFindByIdSupport<>(template, domainType, scope, collection, options, Arrays.asList(fields));
 		}
 	}
 

@@ -15,6 +15,11 @@
  */
 package org.springframework.data.couchbase.core;
 
+import com.couchbase.client.java.kv.RemoveOptions;
+import com.couchbase.client.java.kv.UpsertOptions;
+import org.springframework.data.couchbase.core.support.WithRemoveOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
+import org.springframework.data.couchbase.core.support.WithUpsertOptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -40,12 +45,19 @@ public interface ReactiveUpsertByIdOperation {
 
 	}
 
-	interface UpsertByIdWithCollection<T> extends TerminatingUpsertById<T>, WithCollection<T> {
-
-		TerminatingUpsertById<T> inCollection(String collection);
+	interface UpsertByIdWithOptions<T> extends TerminatingUpsertById<T>, WithUpsertOptions<T> {
+		TerminatingUpsertById<T> withOptions(UpsertOptions options);
 	}
 
-	interface UpsertByIdWithDurability<T> extends UpsertByIdWithCollection<T>, WithDurability<T> {
+	interface UpsertByIdWithCollection<T> extends UpsertByIdWithOptions<T>, WithCollection<Object> {
+		UpsertByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface UpsertByIdWithScope<T> extends UpsertByIdWithCollection<T>, WithScope<Object> {
+		UpsertByIdWithCollection<T> inScope(String scope);
+	}
+
+	interface UpsertByIdWithDurability<T> extends  UpsertByIdWithScope<T>, WithDurability<T> {
 
 		UpsertByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
 

@@ -15,6 +15,8 @@
  */
 package org.springframework.data.couchbase.repository;
 
+import org.springframework.data.couchbase.core.ReactiveCouchbaseOperations;
+import org.springframework.data.couchbase.repository.query.CouchbaseEntityInformation;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.reactive.ReactiveSortingRepository;
 
@@ -26,5 +28,7 @@ import org.springframework.data.repository.reactive.ReactiveSortingRepository;
  */
 @NoRepositoryBean
 public interface ReactiveCouchbaseRepository<T, ID> extends ReactiveSortingRepository<T, ID> {
+	ReactiveCouchbaseOperations getOperations();
 
+	<T1> CouchbaseEntityInformation<T1, String> getEntityInformation();
 }

@@ -16,6 +16,7 @@
 
 package org.springframework.data.couchbase.domain;
 
+import com.couchbase.client.java.json.JsonArray;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -50,6 +51,9 @@ public interface ReactiveAirportRepository extends ReactiveSortingRepository<Air
 
 	@ScanConsistency(query = QueryScanConsistency.REQUEST_PLUS)
 	Flux<Airport> findAllByIata(String iata);
+
+	@Query("#{#n1ql.selectEntity} WHERE #{#n1ql.filter}")
+	Flux<Airport> findAllPoliciesByApplicableTypes(String state, JsonArray applicableTypes);
 
 	@Query("#{#n1ql.selectEntity} where iata = $1")
 	@ScanConsistency(query = QueryScanConsistency.REQUEST_PLUS)

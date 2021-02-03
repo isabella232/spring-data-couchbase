@@ -50,7 +50,7 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 	/**
 	 * Holds the reference to the {@link org.springframework.data.couchbase.core.CouchbaseTemplate}.
 	 */
-	private final CouchbaseOperations couchbaseOperations;
+	private final CouchbaseOperations operations;
 
 	/**
 	 * Contains information about the entity being used in this repository.
@@ -71,7 +71,8 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 		Assert.notNull(couchbaseOperations, "CouchbaseOperations must not be null!");
 
 		this.entityInformation = entityInformation;
-		this.couchbaseOperations = couchbaseOperations;
+		this.operations = couchbaseOperations;
+
 	}
 
 	@Override
@@ -79,11 +80,13 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 	public <S extends T> S save(S entity) {
 		Assert.notNull(entity, "Entity must not be null!");
 		// if entity has non-null, non-zero version property, then replace()
-		if (hasNonZeroVersionProperty(entity, couchbaseOperations.getConverter())) {
-			return (S) couchbaseOperations.replaceById(entityInformation.getJavaType()).one(entity);
+		S result;
+		if (hasNonZeroVersionProperty(entity, operations.getConverter())) {
+			result = (S) operations.replaceById(entityInformation.getJavaType()).one(entity);
 		} else {
-			return (S) couchbaseOperations.upsertById(entityInformation.getJavaType()).one(entity);
+			result = (S) operations.upsertById(entityInformation.getJavaType()).one(entity);
 		}
+		return result;
 	}
 
 	@Override
@@ -95,57 +98,55 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 	@Override
 	public Optional<T> findById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		return Optional.ofNullable(couchbaseOperations.findById(entityInformation.getJavaType()).one(id.toString()));
+		return Optional.ofNullable(operations.findById(entityInformation.getJavaType()).one(id.toString()));
 	}
 
 	@Override
 	public List<T> findAllById(Iterable<ID> ids) {
 		Assert.notNull(ids, "The given Iterable of ids must not be null!");
 		List<String> convertedIds = Streamable.of(ids).stream().map(Objects::toString).collect(Collectors.toList());
-		Collection<? extends T> all = couchbaseOperations.findById(entityInformation.getJavaType()).all(convertedIds);
+		Collection<? extends T> all = operations.findById(entityInformation.getJavaType()).all(convertedIds);
 		return Streamable.of(all).stream().collect(StreamUtils.toUnmodifiableList());
 	}
 
 	@Override
 	public boolean existsById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		return couchbaseOperations.existsById().one(id.toString());
+		return operations.existsById().one(id.toString());
 	}
 
 	@Override
 	public void deleteById(ID id) {
 		Assert.notNull(id, "The given id must not be null!");
-		couchbaseOperations.removeById().one(id.toString());
+		operations.removeById().one(id.toString());
 	}
 
 	@Override
 	public void delete(T entity) {
 		Assert.notNull(entity, "Entity must not be null!");
-		couchbaseOperations.removeById().one(entityInformation.getId(entity));
+		operations.removeById().one(entityInformation.getId(entity));
 	}
 
 	@Override
 	public void deleteAllById(Iterable<? extends ID> ids) {
 		Assert.notNull(ids, "The given Iterable of ids must not be null!");
-		couchbaseOperations.removeById().all(Streamable.of(ids).map(Objects::toString).toList());
+		operations.removeById().all(Streamable.of(ids).map(Objects::toString).toList());
 	}
 
 	@Override
 	public void deleteAll(Iterable<? extends T> entities) {
 		Assert.notNull(entities, "The given Iterable of entities must not be null!");
-		couchbaseOperations.removeById().all(Streamable.of(entities).map(entityInformation::getId).toList());
+		operations.removeById().all(Streamable.of(entities).map(entityInformation::getId).toList());
 	}
 
 	@Override
 	public long count() {
-		return couchbaseOperations.findByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency())
-				.count();
+		return operations.findByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency()).count();
 	}
 
 	@Override
 	public void deleteAll() {
-		couchbaseOperations.removeByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency())
-				.all();
+		operations.removeByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency()).all();
 	}
 
 	@Override
@@ -174,8 +175,14 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 	 *
 	 * @return the underlying entity information.
 	 */
-	protected CouchbaseEntityInformation<T, String> getEntityInformation() {
+	@Override
+	public CouchbaseEntityInformation<T, String> getEntityInformation() {
 		return entityInformation;
+	}
+
+	@Override
+	public CouchbaseOperations getOperations() {
+		return operations;
 	}
 
 	/**
@@ -185,7 +192,7 @@ public class SimpleCouchbaseRepository<T, ID> implements CouchbaseRepository<T, 
 	 * @return the list of found entities, already executed.
 	 */
 	private List<T> findAll(Query query) {
-		return couchbaseOperations.findByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency())
+		return operations.findByQuery(entityInformation.getJavaType()).withConsistency(buildQueryScanConsistency())
 				.matching(query).all();
 	}
 

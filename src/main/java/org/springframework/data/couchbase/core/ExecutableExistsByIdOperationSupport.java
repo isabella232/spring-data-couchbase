@@ -15,12 +15,12 @@
  */
 package org.springframework.data.couchbase.core;
 
-import org.springframework.data.couchbase.core.ReactiveExistsByIdOperationSupport.ReactiveExistsByIdSupport;
-
 import java.util.Collection;
 import java.util.Map;
 
-import org.springframework.util.Assert;
+import org.springframework.data.couchbase.core.ReactiveExistsByIdOperationSupport.ReactiveExistsByIdSupport;
+
+import com.couchbase.client.java.kv.GetOptions;
 
 public class ExecutableExistsByIdOperationSupport implements ExecutableExistsByIdOperation {
 
@@ -32,17 +32,25 @@ public class ExecutableExistsByIdOperationSupport implements ExecutableExistsByI
 
 	@Override
 	public ExecutableExistsById existsById() {
-		return new ExecutableExistsByIdSupport(template, null);
+		return new ExecutableExistsByIdSupport(template, null, null, null);
 	}
 
 	static class ExecutableExistsByIdSupport implements ExecutableExistsById {
 
 		private final CouchbaseTemplate template;
+		private final String scope;
+		private final String collection;
+		private final GetOptions options;
+
 		private final ReactiveExistsByIdSupport reactiveSupport;
 
-		ExecutableExistsByIdSupport(final CouchbaseTemplate template, final String collection) {
+		ExecutableExistsByIdSupport(final CouchbaseTemplate template, final String scope, final String collection,
+				final GetOptions options) {
 			this.template = template;
-			this.reactiveSupport = new ReactiveExistsByIdSupport(template.reactive(), collection);
+			this.scope = scope;
+			this.collection = collection;
+			this.options = options;
+			this.reactiveSupport = new ReactiveExistsByIdSupport(template.reactive(), scope, collection, options);
 		}
 
 		@Override
@@ -56,11 +64,19 @@ public class ExecutableExistsByIdOperationSupport implements ExecutableExistsByI
 		}
 
 		@Override
-		public TerminatingExistsById inCollection(final String collection) {
-			Assert.hasText(collection, "Collection must not be null nor empty.");
-			return new ExecutableExistsByIdSupport(template, collection);
+		public ExistsByIdWithOptions inCollection(final String collection) {
+			return new ExecutableExistsByIdSupport(template, scope, collection, options);
 		}
 
+		@Override
+		public TerminatingExistsById withOptions(GetOptions options) {
+			return new ExecutableExistsByIdSupport(template, scope, collection, options);
+		}
+
+		@Override
+		public ExistsByIdWithCollection inScope(String scope) {
+			return new ExecutableExistsByIdSupport(template, scope, collection, options);
+		}
 	}
 
 }

@@ -20,9 +20,12 @@ import java.util.Collection;
 
 import org.springframework.data.couchbase.core.support.OneAndAllEntity;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithReplaceOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
+import com.couchbase.client.java.kv.ReplaceOptions;
 import com.couchbase.client.java.kv.ReplicateTo;
 
 public interface ExecutableReplaceByIdOperation {
@@ -39,22 +42,27 @@ public interface ExecutableReplaceByIdOperation {
 
 	}
 
-	interface ReplaceByIdWithCollection<T> extends TerminatingReplaceById<T>, WithCollection<T> {
-
-		TerminatingReplaceById<T> inCollection(String collection);
+	interface ReplaceByIdWithOptions<T> extends TerminatingReplaceById<T>, WithReplaceOptions<T> {
+		TerminatingReplaceById<T> withOptions(ReplaceOptions options);
 	}
 
-	interface ReplaceByIdWithDurability<T> extends ReplaceByIdWithCollection<T>, WithDurability<T> {
+	interface ReplaceByIdWithCollection<T> extends ReplaceByIdWithOptions<T>, WithCollection<T> {
+		ReplaceByIdWithOptions<T> inCollection(String collection);
+	}
 
-		ReplaceByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
+	interface ReplaceByIdWithScope<T> extends ReplaceByIdWithCollection<T>, WithScope<T> {
+		ReplaceByIdWithCollection<T> inScope(String scope);
+	}
 
-		ReplaceByIdWithCollection<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
+	interface ReplaceByIdWithDurability<T> extends ReplaceByIdWithScope<T>, WithDurability<T> {
+
+		ReplaceByIdWithScope<T> withDurability(DurabilityLevel durabilityLevel);
+
+		ReplaceByIdWithScope<T> withDurability(PersistTo persistTo, ReplicateTo replicateTo);
 
 	}
 
 	interface ReplaceByIdWithExpiry<T> extends ReplaceByIdWithDurability<T>, WithExpiry<T> {
-
-		@Override
 		ReplaceByIdWithDurability<T> withExpiry(final Duration expiry);
 	}
 

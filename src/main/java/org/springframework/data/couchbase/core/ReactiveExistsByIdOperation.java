@@ -22,6 +22,10 @@ import java.util.Map;
 
 import org.springframework.data.couchbase.core.support.OneAndAllExistsReactive;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithGetOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
+
+import com.couchbase.client.java.kv.GetOptions;
 
 public interface ReactiveExistsByIdOperation {
 
@@ -50,17 +54,18 @@ public interface ReactiveExistsByIdOperation {
 
 	}
 
-	interface ExistsByIdWithCollection extends TerminatingExistsById, WithCollection {
-
-		/**
-		 * Allows to specify a different collection than the default one configured.
-		 *
-		 * @param collection the collection to use in this scope.
-		 */
-		TerminatingExistsById inCollection(String collection);
-
+	interface ExistsByIdWithOptions extends TerminatingExistsById, WithGetOptions {
+		TerminatingExistsById withOptions(GetOptions options);
 	}
 
-	interface ReactiveExistsById extends ExistsByIdWithCollection {}
+	interface ExistsByIdWithCollection extends ExistsByIdWithOptions, WithCollection {
+		ExistsByIdWithOptions inCollection(String collection);
+	}
+
+	interface ExistsByIdWithScope extends ExistsByIdWithCollection, WithScope {
+		ExistsByIdWithCollection inScope(String scope);
+	}
+
+	interface ReactiveExistsById extends ExistsByIdWithScope {}
 
 }

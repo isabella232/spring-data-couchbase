@@ -108,6 +108,7 @@ public abstract class AbstractCouchbaseQueryBase<CouchbaseOperationsType> implem
 	 * 
 	 * @see org.springframework.data.repository.query.RepositoryQuery#execute(java.lang.Object[])
 	 */
+	// TODO: either way, the first thing that happens is a ReactiveCouchbaseParameterAccessor is created (?)
 	public Object execute(Object[] parameters) {
 		return method.hasReactiveWrapperParameter() ? executeDeferred(parameters)
 				: execute(new ReactiveCouchbaseParameterAccessor(getQueryMethod(), parameters));
@@ -130,6 +131,7 @@ public abstract class AbstractCouchbaseQueryBase<CouchbaseOperationsType> implem
 		if (typeToRead == null && returnType.getComponentType() != null) {
 			typeToRead = returnType.getComponentType().getType();
 		}
+
 		return doExecute(getQueryMethod(), processor, parameterAccessor, typeToRead);
 	}
 

@@ -18,11 +18,14 @@ package org.springframework.data.couchbase.repository;
 
 import java.util.List;
 
-import com.couchbase.client.java.query.QueryScanConsistency;
+import org.springframework.data.couchbase.core.CouchbaseOperations;
+import org.springframework.data.couchbase.repository.query.CouchbaseEntityInformation;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.repository.NoRepositoryBean;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.Repository;
+
+import com.couchbase.client.java.query.QueryScanConsistency;
 
 /**
  * Couchbase specific {@link Repository} interface.
@@ -43,4 +46,7 @@ public interface CouchbaseRepository<T, ID> extends PagingAndSortingRepository<T
 	@Override
 	List<T> findAllById(Iterable<ID> iterable);
 
+	CouchbaseEntityInformation<T, String> getEntityInformation();
+
+	CouchbaseOperations getOperations();
 }

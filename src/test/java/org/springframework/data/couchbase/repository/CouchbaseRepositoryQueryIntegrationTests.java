@@ -20,9 +20,11 @@ import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,8 +40,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.data.couchbase.CouchbaseClientFactory;
 import org.springframework.data.couchbase.config.AbstractCouchbaseConfiguration;
+import org.springframework.data.couchbase.core.CouchbaseTemplate;
+import org.springframework.data.couchbase.core.RemoveResult;
 import org.springframework.data.couchbase.domain.Address;
 import org.springframework.data.couchbase.domain.Airport;
 import org.springframework.data.couchbase.domain.AirportRepository;
@@ -57,7 +62,13 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
+import com.couchbase.client.core.error.AmbiguousTimeoutException;
+import com.couchbase.client.core.error.CouchbaseException;
 import com.couchbase.client.core.error.IndexExistsException;
+import com.couchbase.client.core.error.IndexFailureException;
+import com.couchbase.client.java.env.ClusterEnvironment;
+import com.couchbase.client.java.json.JsonArray;
+import com.couchbase.client.java.kv.MutationState;
 import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
@@ -77,6 +88,11 @@ public class CouchbaseRepositoryQueryIntegrationTests extends ClusterAwareIntegr
 	@Autowired AirportRepository airportRepository;
 
 	@Autowired UserRepository userRepository;
+
+	@Autowired CouchbaseTemplate couchbaseTemplate;
+
+	String scopeName = "_default";
+	String collectionName = "_default";
 
 	@BeforeEach
 	public void beforeEach() {
@@ -164,17 +180,126 @@ public class CouchbaseRepositoryQueryIntegrationTests extends ClusterAwareIntegr
 		try {
 			vie = new Airport("airports::vie", "vie", "loww");
 			vie = airportRepository.save(vie);
-			Airport airport2 = airportRepository.withOptions(QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.NOT_BOUNDED)).findByIata(vie.getIata());
+			Airport airport2 = airportRepository
+					.withOptions(QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.NOT_BOUNDED))
+					.findByIata(vie.getIata());
 			assertEquals(airport2.getId(), vie.getId());
 
 			List<Airport> airports = airportRepository.findAllByIata("vie");
 			assertEquals(1, airports.size());
 			Airport airport1 = airportRepository.findById(airports.get(0).getId()).get();
 			assertEquals(airport1.getIata(), vie.getIata());
+		} finally {
+			airportRepository.delete(vie);
+		}
+	}
+
+	/**
+	 * can test against _default._default without setting up additional scope/collection and also test for collections and
+	 * scopes that do not exist These same tests should be repeated on non-default scope and collection in a test that
+	 * supports collections
+	 */
+	@Test
+	@IgnoreWhen(missesCapabilities = { Capabilities.QUERY, Capabilities.COLLECTIONS }, clusterTypes = ClusterType.MOCKED)
+	void findBySimplePropertyWithCollection() {
+
+		Airport vie = new Airport("airports::vie", "vie", "loww");
+		try {
+			Airport saved = airportRepository.withScope(scopeName).withCollection(collectionName).save(vie);
+			// given collection (on scope used by template)
+			Airport airport2 = airportRepository.withCollection(collectionName)
+					.withOptions(QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.REQUEST_PLUS))
+					.iata(vie.getIata());
+			assertEquals(saved, airport2);
+
+			// given scope and collection
+
+			Airport airport3 = airportRepository.withScope(scopeName).withCollection(collectionName)
+					.withOptions(QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.REQUEST_PLUS))
+					.iata(vie.getIata());
+			assertEquals(saved, airport3);
+
+			// given bad collection
+			assertThrows(IndexFailureException.class,
+					() -> airportRepository.withCollection("bogusCollection").iata(vie.getIata()));
+
+			// given bad scope
+			assertThrows(IndexFailureException.class, () -> airportRepository.withScope("bogusScope").iata(vie.getIata()));
 
 		} finally {
 			airportRepository.delete(vie);
 		}
+	}
+
+	@Test
+	@IgnoreWhen(hasCapabilities = { Capabilities.COLLECTIONS }, clusterTypes = ClusterType.MOCKED)
+	void findBySimplePropertyWithCollectionFail() {
+		// can test against _default._default without setting up additional scope/collection
+		// the server will throw an exception if it doesn't support COLLECTIONS
+		Airport vie = new Airport("airports::vie", "vie", "loww");
+		try {
+
+			Airport saved = airportRepository.save(vie);
+
+			assertThrows(CouchbaseException.class, () -> airportRepository.withScope("non_default_scope_name")
+					.withCollection(collectionName).iata(vie.getIata()));
+
+		} finally {
+			airportRepository.delete(vie);
+		}
+	}
+
+	@Test
+	void findBySimplePropertyWithOptions() {
+
+		Airport vie = new Airport("airports::vie", "vie", "loww");
+		JsonArray positionalParams = JsonArray.create().add("this parameter will be overridden");
+		// JsonObject namedParams = JsonObject.create().put("$1", vie.getIata());
+		try {
+			Airport saved = airportRepository.save(vie);
+			// Duration of 1 nano-second will cause timeout
+			assertThrows(AmbiguousTimeoutException.class, () -> airportRepository
+					.withOptions(QueryOptions.queryOptions().timeout(Duration.ofNanos(1))).iata(vie.getIata()));
+
+			Airport airport3 = airportRepository.withOptions(
+					QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.REQUEST_PLUS).parameters(positionalParams))
+					.iata(vie.getIata());
+			assertEquals(saved, airport3);
+
+		} finally {
+			airportRepository.delete(vie);
+		}
+
+		// save() followed by query with NOT_BOUNDED will result in not finding the document
+		Airport airport2 = null;
+		for (int i = 1; i <= 10; i++) {
+			// set version == 0 so save() will be an upsert, not a replace
+			Airport saved = airportRepository.save(vie.clearVersion());
+			try {
+				airport2 = airportRepository.withOptions(
+						QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.NOT_BOUNDED).parameters(positionalParams))
+						.iata(saved.getIata());
+				if (airport2 == null) {
+					break;
+				}
+			} catch (DataRetrievalFailureException drfe) {
+				; // was expecting this
+			} finally {
+				// airportRepository.delete(vie);
+				// instead of delete, use removeResult to test QueryOptions.consistentWith()
+				RemoveResult removeResult = couchbaseTemplate.removeById().one(vie.getId());
+				assertEquals(vie.getId(), removeResult.getId());
+				assertTrue(removeResult.getCas() != 0);
+				assertTrue(removeResult.getMutationToken().isPresent());
+				Airport airport3 = airportRepository
+						.withOptions(QueryOptions.queryOptions().scanConsistency(QueryScanConsistency.REQUEST_PLUS)
+								.consistentWith(MutationState.from(removeResult.getMutationToken().get())))
+						.iata(vie.getIata());
+				assertNull(airport3, "should have been removed");
+			}
+		}
+		assertNull(airport2, "airport2 should have likely been null at least once");
+
 	}
 
 	@Test
@@ -197,6 +322,7 @@ public class CouchbaseRepositoryQueryIntegrationTests extends ClusterAwareIntegr
 			airportRepository.saveAll(
 					Arrays.stream(iatas).map((iata) -> new Airport("airports::" + iata, iata, iata.toLowerCase(Locale.ROOT)))
 							.collect(Collectors.toSet()));
+
 			Long count = airportRepository.countFancyExpression(asList("JFK"), asList("jfk"), false);
 			assertEquals(1, count);
 
@@ -357,6 +483,11 @@ public class CouchbaseRepositoryQueryIntegrationTests extends ClusterAwareIntegr
 			return bucketName();
 		}
 
-	}
+		@Override
+		public void configureEnvironment(final ClusterEnvironment.Builder builder) {
+			builder.ioConfig().maxHttpConnections(11).idleHttpConnectionTimeout(Duration.ofSeconds(4));
+			return;
+		}
 
+	}
 }

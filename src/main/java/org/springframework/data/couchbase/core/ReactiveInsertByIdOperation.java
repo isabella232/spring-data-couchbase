@@ -21,10 +21,12 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.util.Collection;
 
+import org.springframework.data.couchbase.core.mapping.CouchbaseDocument;
 import org.springframework.data.couchbase.core.support.OneAndAllEntityReactive;
 import org.springframework.data.couchbase.core.support.WithCollection;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
+import com.couchbase.client.java.kv.InsertOptions;
 import com.couchbase.client.java.kv.PersistTo;
 import com.couchbase.client.java.kv.ReplicateTo;
 
@@ -37,6 +39,8 @@ public interface ReactiveInsertByIdOperation {
 		Mono<T> one(T object);
 
 		Flux<? extends T> all(Collection<? extends T> objects);
+
+		InsertOptions buildOptions(CouchbaseDocument doc);
 
 	}
 

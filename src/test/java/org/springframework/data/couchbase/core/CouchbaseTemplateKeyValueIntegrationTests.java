@@ -68,6 +68,7 @@ class CouchbaseTemplateKeyValueIntegrationTests extends JavaIntegrationTests {
 		couchbaseTemplate.removeByQuery(User.class).all();
 		couchbaseTemplate.removeByQuery(UserAnnotated.class).all();
 		couchbaseTemplate.removeByQuery(UserAnnotated2.class).all();
+		couchbaseTemplate.removeByQuery(UserAnnotated3.class).all();
 	}
 
 	@Test
@@ -210,8 +211,6 @@ class CouchbaseTemplateKeyValueIntegrationTests extends JavaIntegrationTests {
 		{
 			User user = new User(UUID.randomUUID().toString(), "firstname", "lastname");
 			User modified = couchbaseTemplate.upsertById(User.class).one(user);
-			System.out.println(reactiveCouchbaseTemplate.support().getCas(user));
-			System.out.println(reactiveCouchbaseTemplate.support().getCas(modified));
 			assertEquals(user, modified);
 
 			// careful now - user and modified are the same object. The object has the new cas (@Version version)

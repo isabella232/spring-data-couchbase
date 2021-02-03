@@ -22,7 +22,10 @@ import org.springframework.data.couchbase.core.query.QueryCriteriaDefinition;
 import org.springframework.data.couchbase.core.support.WithCollection;
 import org.springframework.data.couchbase.core.support.WithConsistency;
 import org.springframework.data.couchbase.core.support.WithQuery;
+import org.springframework.data.couchbase.core.support.WithRemoveOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 
+import com.couchbase.client.java.kv.RemoveOptions;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
 public interface ExecutableRemoveByQueryOperation {
@@ -45,17 +48,23 @@ public interface ExecutableRemoveByQueryOperation {
 
 	}
 
-	interface RemoveByQueryInCollection<T> extends RemoveByQueryWithQuery<T>, WithCollection<T> {
+	interface RemoveByQueryWithOptions<T> extends RemoveByQueryWithQuery<T>, WithRemoveOptions<RemoveResult> {
+		RemoveByQueryWithQuery<T> withOptions(RemoveOptions options);
+	}
 
-		RemoveByQueryWithQuery<T> inCollection(String collection);
+	interface RemoveByQueryInCollection<T> extends RemoveByQueryWithOptions<T>, WithCollection<Object> {
+		RemoveByQueryWithOptions<T> inCollection(String collection);
+	}
 
+	interface RemoveByQueryWithScope<T> extends RemoveByQueryInCollection<T>, WithScope<Object> {
+		RemoveByQueryInCollection<T> inScope(String scope);
 	}
 
 	@Deprecated
-	interface RemoveByQueryConsistentWith<T> extends RemoveByQueryInCollection<T> {
+	interface RemoveByQueryConsistentWith<T> extends RemoveByQueryWithScope<T> {
 
 		@Deprecated
-		RemoveByQueryInCollection<T> consistentWith(QueryScanConsistency scanConsistency);
+		RemoveByQueryWithScope<T> consistentWith(QueryScanConsistency scanConsistency);
 
 	}
 

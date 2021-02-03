@@ -22,8 +22,12 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.couchbase.core.query.AnalyticsQuery;
 import org.springframework.data.couchbase.core.support.OneAndAllReactive;
 import org.springframework.data.couchbase.core.support.WithAnalyticsConsistency;
+import org.springframework.data.couchbase.core.support.WithAnalyticsOptions;
 import org.springframework.data.couchbase.core.support.WithAnalyticsQuery;
+import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithScope;
 
+import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsScanConsistency;
 
 public interface ReactiveFindByAnalyticsOperation {
@@ -90,8 +94,20 @@ public interface ReactiveFindByAnalyticsOperation {
 
 	}
 
+	interface FindByAnalyticsWithOptions<T> extends FindByAnalyticsWithQuery<T>, WithAnalyticsOptions<T> {
+		TerminatingFindByAnalytics<T> withOptions(AnalyticsOptions options);
+	}
+
+	interface FindByAnalyticsInCollection<T> extends FindByAnalyticsWithOptions<T>, WithCollection<T> {
+		FindByAnalyticsWithOptions<T> inCollection(String collection);
+	}
+
+	interface FindByAnalyticsWithScope<T> extends FindByAnalyticsInCollection<T>, WithScope<T> {
+		FindByAnalyticsInCollection<T> inScope(String scope);
+	}
+
 	@Deprecated
-	interface FindByAnalyticsConsistentWith<T> extends FindByAnalyticsWithQuery<T> {
+	interface FindByAnalyticsConsistentWith<T> extends FindByAnalyticsWithScope<T> {
 
 		/**
 		 * Allows to override the default scan consistency.
@@ -103,7 +119,7 @@ public interface ReactiveFindByAnalyticsOperation {
 
 	}
 
-	interface FindByAnalyticsWithConsistency<T> extends FindByAnalyticsConsistentWith<T>, WithAnalyticsConsistency<T> {
+	interface FindByAnalyticsWithConsistency<T> extends FindByAnalyticsWithScope<T>, WithAnalyticsConsistency<T> {
 
 		/**
 		 * Allows to override the default scan consistency.
@@ -114,6 +130,6 @@ public interface ReactiveFindByAnalyticsOperation {
 
 	}
 
-	interface ReactiveFindByAnalytics<T> extends FindByAnalyticsWithConsistency<T> {}
+	interface ReactiveFindByAnalytics<T> extends FindByAnalyticsWithConsistency<T>, FindByAnalyticsConsistentWith<T> {}
 
 }

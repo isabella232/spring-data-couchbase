@@ -20,9 +20,12 @@ import java.util.List;
 
 import org.springframework.data.couchbase.core.support.OneAndAllId;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithRemoveOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
+import com.couchbase.client.java.kv.RemoveOptions;
 import com.couchbase.client.java.kv.ReplicateTo;
 
 public interface ExecutableRemoveByIdOperation {
@@ -37,12 +40,19 @@ public interface ExecutableRemoveByIdOperation {
 
 	}
 
-	interface RemoveByIdWithCollection extends TerminatingRemoveById, WithCollection<RemoveResult> {
-
-		TerminatingRemoveById inCollection(String collection);
+	interface RemoveByIdWithOptions extends TerminatingRemoveById, WithRemoveOptions<RemoveResult> {
+		TerminatingRemoveById withOptions(RemoveOptions options);
 	}
 
-	interface RemoveByIdWithDurability extends RemoveByIdWithCollection, WithDurability<RemoveResult> {
+	interface RemoveByIdWithCollection extends RemoveByIdWithOptions, WithCollection<Object> {
+		RemoveByIdWithOptions inCollection(String collection);
+	}
+
+	interface RemoveByIdWithScope extends RemoveByIdWithCollection, WithScope<Object> {
+		RemoveByIdWithCollection inScope(String scope);
+	}
+
+	interface RemoveByIdWithDurability extends RemoveByIdWithScope, WithDurability<RemoveResult> {
 
 		RemoveByIdWithCollection withDurability(DurabilityLevel durabilityLevel);
 

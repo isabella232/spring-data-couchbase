@@ -32,6 +32,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.couchbase.core.query.Query;
 import org.springframework.data.couchbase.core.query.QueryCriteria;
@@ -63,13 +64,14 @@ import com.couchbase.client.java.query.QueryScanConsistency;
 @IgnoreWhen(missesCapabilities = { Capabilities.QUERY, Capabilities.COLLECTIONS }, clusterTypes = ClusterType.MOCKED)
 class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIntegrationTests {
 
+	Airport vie = new Airport("airports::vie", "vie", "loww");
+
 	@BeforeAll
 	public static void beforeAll() {
 		// first call the super method
 		callSuperBeforeAll(new Object() {});
 		// then do processing for this class
-		// collectionName = null;
-		// scopeName = null;
+		// no-op
 	}
 
 	@AfterAll
@@ -87,15 +89,20 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 		super.beforeEach();
 		// then do processing for this class
 		couchbaseTemplate.removeByQuery(User.class).inCollection(collectionName).all();
+		couchbaseTemplate.findByQuery(User.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
+				.inCollection(collectionName).all();
 	}
 
 	@AfterEach
 	@Override
 	public void afterEach() {
-		// first call the super method
+		// first do processing for this class
+		couchbaseTemplate.removeByQuery(User.class).inCollection(collectionName).all();
+		// query with REQUEST_PLUS to ensure that the remove has completed.
+		couchbaseTemplate.findByQuery(User.class).withConsistency(QueryScanConsistency.REQUEST_PLUS)
+				.inCollection(collectionName).all();
+		// then call the super method
 		super.afterEach();
-		// then do processing for this class
-		// no-op
 	}
 
 	@Test
@@ -315,7 +322,7 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 
 			// count( distinct icao )
 			// not currently possible to have multiple fields in COUNT(DISTINCT field1, field2, ... ) due to MB43475
-			long count1 = reactiveCouchbaseTemplate.findByQuery(Airport.class).distinct(new String[] { "icao" })
+			Long count1 = reactiveCouchbaseTemplate.findByQuery(Airport.class).distinct(new String[] { "icao" })
 					.as(Airport.class).withConsistency(QueryScanConsistency.REQUEST_PLUS).inCollection(collectionName).count()
 					.block();
 			assertEquals(2, count1);
@@ -333,6 +340,110 @@ class CouchbaseTemplateQueryCollectionIntegrationTests extends CollectionAwareIn
 			reactiveCouchbaseTemplate.removeById().inCollection(collectionName)
 					.all(Arrays.stream(iatas).map((iata) -> "airports::" + iata).collect(Collectors.toSet())).collectList()
 					.block();
+		}
+	}
+
+	@Test
+	public void existsById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			Boolean exists = couchbaseTemplate.existsById().inCollection(collectionName).one(saved.getId());
+			assertTrue(exists, "Airport should exist: " + saved.getId());
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	@Disabled // needs analytics data set
+	public void findByAnalytics() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			List<Airport> found = couchbaseTemplate.findByAnalytics(Airport.class).inCollection(collectionName).all();
+			assertEquals(saved, found);
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	public void findById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			Airport found = couchbaseTemplate.findById(Airport.class).inCollection(collectionName).one(saved.getId());
+			assertEquals(saved, found);
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	public void findByQuery() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			List<Airport> found = couchbaseTemplate.findByQuery(Airport.class)
+					.withConsistency(QueryScanConsistency.REQUEST_PLUS).inCollection(collectionName).all();
+			assertEquals(saved.getId(), found.get(0).getId());
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	public void findFromReplicasById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inCollection(collectionName)
+					.any(saved.getId());
+			assertEquals(saved, found);
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	public void insertById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName)
+				.one(vie.withId(UUID.randomUUID().toString()));
+		try {
+			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inCollection(collectionName)
+					.any(saved.getId());
+			assertEquals(saved, found);
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+		}
+	}
+
+	@Test
+	public void removeById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {} finally {
+			RemoveResult removeResult = couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
+			assertEquals(saved.getId(), removeResult.getId());
+		}
+	}
+
+	@Test
+	public void removeByQuery() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {} finally {
+			List<RemoveResult> removeResults = couchbaseTemplate.removeByQuery(Airport.class)
+					.withConsistency(QueryScanConsistency.REQUEST_PLUS).inCollection(collectionName)
+					.matching(Query.query(QueryCriteria.where("iata").is(vie.getIata()))).all();
+			assertEquals(saved.getId(), removeResults.get(0).getId());
+		}
+
+	}
+
+	@Test
+	public void replaceById() {
+		Airport saved = couchbaseTemplate.insertById(Airport.class).inCollection(collectionName).one(vie);
+		try {
+			Airport found = couchbaseTemplate.findFromReplicasById(Airport.class).inCollection(collectionName)
+					.any(saved.getId());
+			assertEquals(saved, found);
+		} finally {
+			couchbaseTemplate.removeById().inCollection(collectionName).one(saved.getId());
 		}
 	}
 

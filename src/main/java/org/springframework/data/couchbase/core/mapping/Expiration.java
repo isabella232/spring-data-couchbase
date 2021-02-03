@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2020 the original author or authors
+ * Copyright 2021 the original author or authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,24 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.data.couchbase.core.mapping;
 
-import org.springframework.data.mapping.PersistentProperty;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /**
- * Represents a property part of an entity that needs to be persisted.
+ * Annotation to define a field to be substituted for META().expiration in a query
  *
- * @author Michael Nitschinger
+ * @author Michael Reiche
  */
-public interface CouchbasePersistentProperty extends PersistentProperty<CouchbasePersistentProperty> {
-
-	/**
-	 * Returns the field name of the property.
-	 * <p/>
-	 * The field name can be different from the actual property name by using a custom annotation.
-	 */
-	String getFieldName();
-
-	Boolean isExpirationProperty();
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ ElementType.FIELD, ElementType.ANNOTATION_TYPE })
+public @interface Expiration {
 }

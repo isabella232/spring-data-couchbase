@@ -19,7 +19,11 @@ import java.util.Collection;
 
 import org.springframework.data.couchbase.core.support.OneAndAllId;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithGetOptions;
 import org.springframework.data.couchbase.core.support.WithProjectionId;
+import org.springframework.data.couchbase.core.support.WithScope;
+
+import com.couchbase.client.java.kv.GetOptions;
 
 public interface ExecutableFindByIdOperation {
 
@@ -50,25 +54,26 @@ public interface ExecutableFindByIdOperation {
 
 	}
 
-	interface FindByIdWithCollection<T> extends TerminatingFindById<T>, WithCollection<T> {
-
-		/**
-		 * Allows to specify a different collection than the default one configured.
-		 *
-		 * @param collection the collection to use in this scope.
-		 */
-		TerminatingFindById<T> inCollection(String collection);
-
+	interface FindByIdWithOptions<T> extends TerminatingFindById<T>, WithGetOptions<T> {
+		TerminatingFindById<T> withOptions(GetOptions options);
 	}
 
-	interface FindByIdWithProjection<T> extends FindByIdWithCollection<T>, WithProjectionId<T> {
+	interface FindByIdWithCollection<T> extends FindByIdWithOptions<T>, WithCollection<T> {
+		FindByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface FindByIdWithScope<T> extends FindByIdWithCollection<T>, WithScope<T> {
+		FindByIdWithCollection<T> inScope(String scope);
+	}
+
+	interface FindByIdWithProjection<T> extends FindByIdWithScope<T>, WithProjectionId<T> {
 
 		/**
 		 * Load only certain fields for the document.
 		 *
 		 * @param fields the projected fields to load.
 		 */
-		FindByIdWithCollection<T> project(String... fields);
+		FindByIdWithScope<T> project(String... fields);
 
 	}
 

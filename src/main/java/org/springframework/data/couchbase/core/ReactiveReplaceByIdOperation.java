@@ -23,9 +23,12 @@ import java.util.Collection;
 
 import org.springframework.data.couchbase.core.support.OneAndAllEntityReactive;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithReplaceOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
 import com.couchbase.client.java.kv.PersistTo;
+import com.couchbase.client.java.kv.ReplaceOptions;
 import com.couchbase.client.java.kv.ReplicateTo;
 
 public interface ReactiveReplaceByIdOperation {
@@ -40,12 +43,19 @@ public interface ReactiveReplaceByIdOperation {
 
 	}
 
-	interface ReplaceByIdWithCollection<T> extends TerminatingReplaceById<T>, WithCollection<T> {
-
-		TerminatingReplaceById<T> inCollection(String collection);
+	interface ReplaceByIdWithOptions<T> extends TerminatingReplaceById<T>, WithReplaceOptions<RemoveResult> {
+		TerminatingReplaceById<T> withOptions(ReplaceOptions options);
 	}
 
-	interface ReplaceByIdWithDurability<T> extends ReplaceByIdWithCollection<T>, WithDurability<T> {
+	interface ReplaceByIdWithCollection<T> extends ReplaceByIdWithOptions<T>, WithCollection<Object> {
+		ReplaceByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface ReplaceByIdWithScope<T> extends ReplaceByIdWithCollection<T>, WithScope<Object> {
+		ReplaceByIdWithCollection<T> inScope(String scope);
+	}
+
+	interface ReplaceByIdWithDurability<T> extends ReplaceByIdWithScope<T>, WithDurability<T> {
 
 		ReplaceByIdWithCollection<T> withDurability(DurabilityLevel durabilityLevel);
 

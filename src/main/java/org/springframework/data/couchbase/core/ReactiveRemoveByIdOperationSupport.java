@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.Collection;
 
+import org.springframework.data.couchbase.core.support.PseudoArgs;
 import org.springframework.util.Assert;
 
 import com.couchbase.client.core.msg.kv.DurabilityLevel;
@@ -37,22 +38,28 @@ public class ReactiveRemoveByIdOperationSupport implements ReactiveRemoveByIdOpe
 
 	@Override
 	public ReactiveRemoveById removeById() {
-		return new ReactiveRemoveByIdSupport(template, null, PersistTo.NONE, ReplicateTo.NONE, DurabilityLevel.NONE, null);
+		return new ReactiveRemoveByIdSupport(template, null, null, null, PersistTo.NONE, ReplicateTo.NONE,
+				DurabilityLevel.NONE, null);
 	}
 
 	static class ReactiveRemoveByIdSupport implements ReactiveRemoveById {
 
 		private final ReactiveCouchbaseTemplate template;
+		private final String scope;
 		private final String collection;
+		private final RemoveOptions options;
 		private final PersistTo persistTo;
 		private final ReplicateTo replicateTo;
 		private final DurabilityLevel durabilityLevel;
 		private final Long cas;
 
-		ReactiveRemoveByIdSupport(final ReactiveCouchbaseTemplate template, final String collection,
-				final PersistTo persistTo, final ReplicateTo replicateTo, final DurabilityLevel durabilityLevel, Long cas) {
+		ReactiveRemoveByIdSupport(final ReactiveCouchbaseTemplate template, final String scope, final String collection,
+				final RemoveOptions options, final PersistTo persistTo, final ReplicateTo replicateTo,
+				final DurabilityLevel durabilityLevel, Long cas) {
 			this.template = template;
+			this.scope = scope;
 			this.collection = collection;
+			this.options = options;
 			this.persistTo = persistTo;
 			this.replicateTo = replicateTo;
 			this.durabilityLevel = durabilityLevel;
@@ -61,7 +68,8 @@ public class ReactiveRemoveByIdOperationSupport implements ReactiveRemoveByIdOpe
 
 		@Override
 		public Mono<RemoveResult> one(final String id) {
-			return Mono.just(id).flatMap(docId -> template.getCollection(collection).reactive()
+			PseudoArgs pArgs = new PseudoArgs(template, scope, collection);
+			return Mono.just(id).flatMap(docId -> template.getCollection(pArgs.getCollection()).reactive()
 					.remove(id, buildRemoveOptions()).map(r -> RemoveResult.from(docId, r))).onErrorMap(throwable -> {
 						if (throwable instanceof RuntimeException) {
 							return template.potentiallyConvertRuntimeException((RuntimeException) throwable);
@@ -90,28 +98,42 @@ public class ReactiveRemoveByIdOperationSupport implements ReactiveRemoveByIdOpe
 		}
 
 		@Override
-		public RemoveByIdWithDurability inCollection(final String collection) {
-			Assert.hasText(collection, "Collection must not be null nor empty.");
-			return new ReactiveRemoveByIdSupport(template, collection, persistTo, replicateTo, durabilityLevel, null);
-		}
-
-		@Override
 		public RemoveByIdWithCollection withDurability(final DurabilityLevel durabilityLevel) {
 			Assert.notNull(durabilityLevel, "Durability Level must not be null.");
-			return new ReactiveRemoveByIdSupport(template, collection, persistTo, replicateTo, durabilityLevel, null);
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
 		}
 
 		@Override
 		public RemoveByIdWithCollection withDurability(final PersistTo persistTo, final ReplicateTo replicateTo) {
 			Assert.notNull(persistTo, "PersistTo must not be null.");
 			Assert.notNull(replicateTo, "ReplicateTo must not be null.");
-			return new ReactiveRemoveByIdSupport(template, collection, persistTo, replicateTo, durabilityLevel, null);
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
 		}
 
 		@Override
-		public RemoveByIdWithDurability withCas(final Long cas) {
-			Assert.notNull(cas, "CAS must not be null.");
-			return new ReactiveRemoveByIdSupport(template, collection, persistTo, replicateTo, durabilityLevel, cas);
+		public RemoveByIdWithDurability inCollection(final String collection) {
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
+		}
+
+		@Override
+		public RemoveByIdWithCollection inScope(String scope) {
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
+		}
+
+		@Override
+		public TerminatingRemoveById withOptions(RemoveOptions options) {
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
+		}
+
+		@Override
+		public RemoveByIdWithDurability withCas(Long cas) {
+			return new ReactiveRemoveByIdSupport(template, scope, collection, options, persistTo, replicateTo,
+					durabilityLevel, cas);
 		}
 	}
 

@@ -467,6 +467,8 @@ public class QueryCriteria implements QueryCriteriaDefinition {
 	private String maybeBackTic(String value) {
 		if (value == null || (value.startsWith("`") && value.endsWith("`"))) {
 			return value;
+		} else if (value == null || (value.contains("META("))) {
+			return value;
 		} else {
 			return "`" + value + "`";
 		}

@@ -42,6 +42,7 @@ public abstract class AbstractCouchbaseQuery extends AbstractCouchbaseQueryBase<
 		implements RepositoryQuery {
 
 	private final ExecutableFindByQueryOperation.ExecutableFindByQuery<?> findOperationWithProjection;
+	// private CommonOptions<?> couchbaseOptions;
 
 	/**
 	 * Creates a new {@link AbstractCouchbaseQuery} from the given {@link ReactiveCouchbaseQueryMethod} and
@@ -81,16 +82,15 @@ public abstract class AbstractCouchbaseQuery extends AbstractCouchbaseQueryBase<
 		Query query = createQuery(accessor);
 
 		query = applyAnnotatedConsistencyIfPresent(query);
+
+		// query = applyAnnotations(query);
 		// query = applyAnnotatedCollationIfPresent(query, accessor); // not yet implemented
 
-		ExecutableFindByQuery<?> find = typeToRead == null ? findOperationWithProjection //
-				: findOperationWithProjection; // not yet implemented in core .as(typeToRead);
-
-		String collection = "_default._default";// method.getEntityInformation().getCollectionName(); // not yet implemented
+		ExecutableFindByQuery<?> find = findOperationWithProjection;
 
 		CouchbaseQueryExecution execution = getExecution(accessor,
 				new ResultProcessingConverter<>(processor, getOperations(), getInstantiators()), find);
-		return execution.execute(query, processor.getReturnedType().getDomainType(), collection);
+		return execution.execute(query, processor.getReturnedType().getDomainType(), null);
 	}
 
 	/**

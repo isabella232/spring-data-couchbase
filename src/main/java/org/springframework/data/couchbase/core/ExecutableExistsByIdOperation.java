@@ -20,6 +20,10 @@ import java.util.Map;
 
 import org.springframework.data.couchbase.core.support.OneAndAllExists;
 import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithGetOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
+
+import com.couchbase.client.java.kv.GetOptions;
 
 public interface ExecutableExistsByIdOperation {
 
@@ -48,16 +52,18 @@ public interface ExecutableExistsByIdOperation {
 
 	}
 
-	interface ExistsByIdWithCollection extends TerminatingExistsById, WithCollection {
-
-		/**
-		 * Allows to specify a different collection than the default one configured.
-		 *
-		 * @param collection the collection to use in this scope.
-		 */
-		TerminatingExistsById inCollection(String collection);
+	interface ExistsByIdWithOptions<T> extends TerminatingExistsById, WithGetOptions<T> {
+		TerminatingExistsById withOptions(GetOptions options);
 	}
 
-	interface ExecutableExistsById extends ExistsByIdWithCollection {}
+	interface ExistsByIdWithCollection<T> extends ExistsByIdWithOptions<T>, WithCollection<T> {
+		ExistsByIdWithOptions<T> inCollection(String collection);
+	}
+
+	interface ExistsByIdWithScope<T> extends ExistsByIdWithCollection<T>, WithScope<T> {
+		ExistsByIdWithCollection<T> inScope(String scope);
+	}
+
+	interface ExecutableExistsById extends ExistsByIdWithScope {}
 
 }

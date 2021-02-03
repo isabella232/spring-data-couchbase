@@ -27,6 +27,7 @@ import reactor.test.StepVerifier;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -91,9 +92,15 @@ public class ReactiveCouchbaseRepositoryQueryIntegrationTests extends JavaIntegr
 	@Test
 	void findBySimpleProperty() {
 		Airport vie = null;
+		Airport vie1 = null;
 		try {
 			vie = new Airport("airports::vie", "vie", "loww");
+			vie1 = vie.withId(UUID.randomUUID().toString());
 			airportRepository.save(vie).block();
+			airportRepository.save(vie1).block();
+			List<Airport> airports0 = airportRepository.getAllByIata("vie").collectList().block();
+			assertEquals(2, airports0.size());
+			airportRepository.delete(vie1).block();
 			List<Airport> airports1 = airportRepository.findAllByIata("vie").collectList().block();
 			assertEquals(1, airports1.size());
 			List<Airport> airports2 = airportRepository.findAllByIata("vie").collectList().block();
@@ -106,7 +113,7 @@ public class ReactiveCouchbaseRepositoryQueryIntegrationTests extends JavaIntegr
 			Airport airport2 = airportRepository.findByIata(airports.get(0).getIata()).block();
 			assertEquals(airport1.getId(), vie.getId());
 		} finally {
-			airportRepository.delete(vie).block();
+			airportRepository.deleteAll().block();
 		}
 	}
 

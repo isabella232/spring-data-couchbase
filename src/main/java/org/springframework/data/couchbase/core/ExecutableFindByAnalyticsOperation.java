@@ -23,9 +23,13 @@ import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.data.couchbase.core.query.AnalyticsQuery;
 import org.springframework.data.couchbase.core.support.OneAndAll;
 import org.springframework.data.couchbase.core.support.WithAnalyticsConsistency;
+import org.springframework.data.couchbase.core.support.WithAnalyticsOptions;
 import org.springframework.data.couchbase.core.support.WithAnalyticsQuery;
+import org.springframework.data.couchbase.core.support.WithCollection;
+import org.springframework.data.couchbase.core.support.WithScope;
 import org.springframework.lang.Nullable;
 
+import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsScanConsistency;
 
 public interface ExecutableFindByAnalyticsOperation {
@@ -117,8 +121,20 @@ public interface ExecutableFindByAnalyticsOperation {
 
 	}
 
+	interface FindByAnalyticsWithOptions<T> extends FindByAnalyticsWithQuery<T>, WithAnalyticsOptions<T> {
+		FindByAnalyticsWithQuery<T> withOptions(AnalyticsOptions options);
+	}
+
+	interface FindByAnalyticsInCollection<T> extends FindByAnalyticsWithOptions<T>, WithCollection<T> {
+		FindByAnalyticsWithOptions<T> inCollection(String collection);
+	}
+
+	interface FindByAnalyticsWithScope<T> extends FindByAnalyticsInCollection<T>, WithScope<T> {
+		FindByAnalyticsInCollection<T> inScope(String scope);
+	}
+
 	@Deprecated
-	interface FindByAnalyticsConsistentWith<T> extends FindByAnalyticsWithQuery<T> {
+	interface FindByAnalyticsConsistentWith<T> extends FindByAnalyticsWithScope<T> {
 
 		/**
 		 * Allows to override the default scan consistency.

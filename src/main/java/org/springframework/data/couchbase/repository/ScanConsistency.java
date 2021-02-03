@@ -25,7 +25,7 @@ import com.couchbase.client.java.analytics.AnalyticsScanConsistency;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.METHOD, ElementType.ANNOTATION_TYPE })
+@Target({ ElementType.METHOD, ElementType.ANNOTATION_TYPE, ElementType.TYPE })
 @Documented
 public @interface ScanConsistency {
 

@@ -25,9 +25,11 @@ import org.springframework.data.couchbase.core.support.OneAndAllReactive;
 import org.springframework.data.couchbase.core.support.WithCollection;
 import org.springframework.data.couchbase.core.support.WithConsistency;
 import org.springframework.data.couchbase.core.support.WithDistinct;
-import org.springframework.data.couchbase.core.support.WithProjection;
 import org.springframework.data.couchbase.core.support.WithQuery;
+import org.springframework.data.couchbase.core.support.WithQueryOptions;
+import org.springframework.data.couchbase.core.support.WithScope;
 
+import com.couchbase.client.java.query.QueryOptions;
 import com.couchbase.client.java.query.QueryScanConsistency;
 
 /**
@@ -86,6 +88,8 @@ public interface ReactiveFindByQueryOperation {
 		 */
 		Mono<Boolean> exists();
 
+		QueryOptions buildOptions(QueryOptions options);
+
 	}
 
 	/**
@@ -117,28 +121,20 @@ public interface ReactiveFindByQueryOperation {
 
 	}
 
-	/**
-	 * Collection override (optional).
-	 */
-	interface FindByQueryInCollection<T> extends FindByQueryWithQuery<T>, WithCollection<T> {
-
-		/**
-		 * Explicitly set the name of the collection to perform the query on. <br />
-		 * Skip this step to use the default collection derived from the domain type.
-		 *
-		 * @param collection must not be {@literal null} nor {@literal empty}.
-		 * @return new instance of {@link FindByQueryWithProjection}.
-		 * @throws IllegalArgumentException if collection is {@literal null}.
-		 */
-		FindByQueryWithQuery<T> inCollection(String collection);
+	interface FindByQueryWithOptions<T> extends FindByQueryWithQuery<T>, WithQueryOptions<T> {
+		TerminatingFindByQuery<T> withOptions(QueryOptions options);
 	}
 
-	/**
-	 * @deprecated
-	 * @see FindByQueryWithConsistency
-	 */
+	interface FindByQueryInCollection<T> extends FindByQueryWithOptions<T>, WithCollection<T> {
+		FindByQueryWithOptions<T> inCollection(String collection);
+	}
+
+	interface FindByQueryWithScope<T> extends FindByQueryInCollection<T>, WithScope<T> {
+		FindByQueryInCollection<T> inScope(String scope);
+	}
+
 	@Deprecated
-	interface FindByQueryConsistentWith<T> extends FindByQueryInCollection<T> {
+	interface FindByQueryConsistentWith<T> extends FindByQueryWithScope<T> {
 
 		/**
 		 * Allows to override the default scan consistency.
@@ -146,7 +142,7 @@ public interface ReactiveFindByQueryOperation {
 		 * @param scanConsistency the custom scan consistency to use for this query.
 		 */
 		@Deprecated
-		FindByQueryInCollection<T> consistentWith(QueryScanConsistency scanConsistency);
+		FindByQueryWithScope<T> consistentWith(QueryScanConsistency scanConsistency);
 
 	}
 

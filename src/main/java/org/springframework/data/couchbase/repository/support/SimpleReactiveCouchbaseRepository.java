@@ -16,7 +16,7 @@
 
 package org.springframework.data.couchbase.repository.support;
 
-import static org.springframework.data.couchbase.repository.support.Util.*;
+import static org.springframework.data.couchbase.repository.support.Util.hasNonZeroVersionProperty;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -26,7 +26,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.reactivestreams.Publisher;
-
 import org.springframework.data.couchbase.core.CouchbaseOperations;
 import org.springframework.data.couchbase.core.ReactiveCouchbaseOperations;
 import org.springframework.data.couchbase.core.query.Query;
@@ -82,12 +81,14 @@ public class SimpleReactiveCouchbaseRepository<T, ID> implements ReactiveCouchba
 	@Override
 	public <S extends T> Mono<S> save(S entity) {
 		Assert.notNull(entity, "Entity must not be null!");
-		// if entity has non-null version property, then replace()
+		// if entity has non-null, non-zero version property, then replace()
+		Mono<S> result;
 		if (hasNonZeroVersionProperty(entity, operations.getConverter())) {
-			return (Mono<S>) operations.replaceById(entityInformation.getJavaType()).one(entity);
+			result = (Mono<S>) operations.replaceById(entityInformation.getJavaType()).one(entity);
 		} else {
-			return (Mono<S>) operations.upsertById(entityInformation.getJavaType()).one(entity);
+			result = (Mono<S>) operations.upsertById(entityInformation.getJavaType()).one(entity);
 		}
+		return result;
 	}
 
 	@Override
@@ -197,8 +198,14 @@ public class SimpleReactiveCouchbaseRepository<T, ID> implements ReactiveCouchba
 	 *
 	 * @return the underlying entity information.
 	 */
-	protected CouchbaseEntityInformation<T, String> getEntityInformation() {
+	@Override
+	public CouchbaseEntityInformation getEntityInformation() {
 		return entityInformation;
+	}
+
+	@Override
+	public ReactiveCouchbaseOperations getOperations() {
+		return operations;
 	}
 
 	private Flux<T> findAll(Query query) {

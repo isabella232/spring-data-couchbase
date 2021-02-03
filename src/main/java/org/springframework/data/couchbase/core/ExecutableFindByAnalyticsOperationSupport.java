@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 import org.springframework.data.couchbase.core.ReactiveFindByAnalyticsOperationSupport.ReactiveFindByAnalyticsSupport;
 import org.springframework.data.couchbase.core.query.AnalyticsQuery;
 
+import com.couchbase.client.java.analytics.AnalyticsOptions;
 import com.couchbase.client.java.analytics.AnalyticsScanConsistency;
 
 public class ExecutableFindByAnalyticsOperationSupport implements ExecutableFindByAnalyticsOperation {
@@ -35,26 +36,37 @@ public class ExecutableFindByAnalyticsOperationSupport implements ExecutableFind
 
 	@Override
 	public <T> ExecutableFindByAnalytics<T> findByAnalytics(final Class<T> domainType) {
-		return new ExecutableFindByAnalyticsSupport<>(template, domainType, ALL_QUERY,
-				AnalyticsScanConsistency.NOT_BOUNDED);
+		return new ExecutableFindByAnalyticsSupport<>(template, domainType, domainType, ALL_QUERY, null, null, null, null,
+				null);
 	}
 
 	static class ExecutableFindByAnalyticsSupport<T> implements ExecutableFindByAnalytics<T> {
 
 		private final CouchbaseTemplate template;
-		private final Class<T> domainType;
+		private final Class<?> domainType;
+		private final Class<T> returnType;
 		private final ReactiveFindByAnalyticsSupport<T> reactiveSupport;
 		private final AnalyticsQuery query;
 		private final AnalyticsScanConsistency scanConsistency;
+		private final String scope;
+		private final String collection;
+		private final AnalyticsOptions options;
+		private final String[] distinctFields;
 
-		ExecutableFindByAnalyticsSupport(final CouchbaseTemplate template, final Class<T> domainType,
-				final AnalyticsQuery query, final AnalyticsScanConsistency scanConsistency) {
+		ExecutableFindByAnalyticsSupport(final CouchbaseTemplate template, final Class<?> domainType,
+				final Class<T> returnType, final AnalyticsQuery query, final AnalyticsScanConsistency scanConsistency,
+				final String scope, final String collection, final AnalyticsOptions options, String[] distinctFields) {
 			this.template = template;
 			this.domainType = domainType;
+			this.returnType = returnType;
 			this.query = query;
-			this.reactiveSupport = new ReactiveFindByAnalyticsSupport<>(template.reactive(), domainType, query,
-					scanConsistency);
+			this.reactiveSupport = new ReactiveFindByAnalyticsSupport<>(template.reactive(), domainType, returnType, query,
+					scanConsistency, scope, collection, options, distinctFields);
 			this.scanConsistency = scanConsistency;
+			this.scope = scope;
+			this.collection = collection;
+			this.options = options;
+			this.distinctFields = distinctFields;
 		}
 
 		@Override
@@ -74,18 +86,39 @@ public class ExecutableFindByAnalyticsOperationSupport implements ExecutableFind
 
 		@Override
 		public TerminatingFindByAnalytics<T> matching(final AnalyticsQuery query) {
-			return new ExecutableFindByAnalyticsSupport<>(template, domainType, query, scanConsistency);
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
+		}
+
+		@Override
+		public FindByAnalyticsWithQuery<T> withOptions(AnalyticsOptions options) {
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
+		}
+
+		@Override
+		public FindByAnalyticsInCollection<T> inScope(String scope) {
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
+		}
+
+		@Override
+		public FindByAnalyticsWithConsistency<T> inCollection(final String collection) {
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
 		}
 
 		@Override
 		@Deprecated
 		public FindByAnalyticsWithQuery<T> consistentWith(final AnalyticsScanConsistency scanConsistency) {
-			return new ExecutableFindByAnalyticsSupport<>(template, domainType, query, scanConsistency);
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
 		}
 
 		@Override
 		public FindByAnalyticsWithConsistency<T> withConsistency(final AnalyticsScanConsistency scanConsistency) {
-			return new ExecutableFindByAnalyticsSupport<>(template, domainType, query, scanConsistency);
+			return new ExecutableFindByAnalyticsSupport<>(template, domainType, returnType, query, scanConsistency, scope,
+					collection, options, distinctFields);
 		}
 
 		@Override

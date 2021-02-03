@@ -16,9 +16,12 @@
 
 package org.springframework.data.couchbase.repository.support;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.couchbase.core.convert.CouchbaseConverter;
 import org.springframework.data.couchbase.core.mapping.CouchbasePersistentEntity;
 import org.springframework.data.couchbase.core.mapping.CouchbasePersistentProperty;
+import org.springframework.data.couchbase.core.query.Query;
 
 /**
  * Utility class for Couchbase Repository
@@ -26,6 +29,8 @@ import org.springframework.data.couchbase.core.mapping.CouchbasePersistentProper
  * @author Michael Reiche
  */
 public class Util {
+
+	private static final Logger LOG = LoggerFactory.getLogger(Query.class);
 
 	public static boolean hasNonZeroVersionProperty(Object entity, CouchbaseConverter converter) {
 		CouchbasePersistentEntity<?> mapperEntity = converter.getMappingContext().getPersistentEntity(entity.getClass());
@@ -39,4 +44,5 @@ public class Util {
 		} catch (IllegalAccessException iae) {}
 		return hasVersionProperty;
 	}
+
 }

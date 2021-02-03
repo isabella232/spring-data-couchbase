@@ -35,7 +35,6 @@ import org.springframework.data.repository.query.Parameter;
 import org.springframework.data.repository.query.QueryMethod;
 import org.springframework.data.repository.util.ReactiveWrapperConverters;
 import org.springframework.lang.Nullable;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
 /**
